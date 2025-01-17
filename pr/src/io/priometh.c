@@ -6,6 +6,10 @@
 #include "primpl.h"
 
 #include <string.h>
+#if defined(__CHERI_PURE_CAPABILITY__)
+#include <stdalign.h>
+#include <stddef.h>
+#endif  // !__CHERI_PURE_CAPABILITY__
 
 /*****************************************************************************/
 /************************** Invalid I/O method object ************************/
@@ -282,9 +286,13 @@ PR_IMPLEMENT(PRInt32) PR_EmulateAcceptRead(
     if (rv >= 0)
     {
         /* copy the new info out where caller can see it */
+#if defined(__CHERI_PURE_CAPABILITY__)
+        *raddr = (PRNetAddr*) __builtin_align_up(buf, alignof(max_align_t));
+#else   // !__CHERI_PURE_CAPABILITY__
 #define AMASK ((PRPtrdiff)7)  /* mask for alignment of PRNetAddr */
         PRPtrdiff aligned = (PRPtrdiff)buf + amount + AMASK;
         *raddr = (PRNetAddr*)(aligned & ~AMASK);
+#endif  // !__CHERI_PURE_CAPABILITY__
         memcpy(*raddr, &remote, PR_NETADDR_SIZE(&remote));
         *nd = accepted;
         return rv;
