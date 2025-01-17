@@ -236,6 +236,10 @@ typedef unsigned Long ULong;
 
 #include "stdlib.h"
 #include "string.h"
+#if defined(__CHERI_PURE_CAPABILITY__)
+#include <stdalign.h>
+#include <stddef.h>
+#endif
 
 #ifdef USE_LOCALE
 #include "locale.h"
@@ -255,8 +259,13 @@ extern void *MALLOC(size_t);
 #ifndef PRIVATE_MEM
 #define PRIVATE_MEM 2304
 #endif
+#if defined(__CHERI_PURE_CAPABILITY__)
+#define PRIVATE_mem (__builtin_align_up(PRIVATE_MEM, alignof(max_align_t)))
+static char private_mem[PRIVATE_mem], *pmem_next = private_mem;
+#else
 #define PRIVATE_mem ((PRIVATE_MEM+sizeof(double)-1)/sizeof(double))
 static double private_mem[PRIVATE_mem], *pmem_next = private_mem;
+#endif
 #endif
 
 #undef IEEE_Arith
@@ -559,14 +568,22 @@ Balloc
 #ifdef Omit_Private_Memory
         rv = (Bigint *)MALLOC(sizeof(Bigint) + (x-1)*sizeof(ULong));
 #else
+#if defined(__CHERI_PURE_CAPABILITY__)
+        len = __builtin_align_up(sizeof(Bigint) + (x-1)*sizeof(ULong), alignof(max_align_t));
+#else
         len = (sizeof(Bigint) + (x-1)*sizeof(ULong) + sizeof(double) - 1)
               /sizeof(double);
+#endif
         if (k <= Kmax && pmem_next - private_mem + len <= PRIVATE_mem) {
             rv = (Bigint*)pmem_next;
             pmem_next += len;
         }
         else {
+#if defined(__CHERI_PURE_CAPABILITY__)
+            rv = (Bigint*)MALLOC(len);
+#else
             rv = (Bigint*)MALLOC(len*sizeof(double));
+#endif
         }
 #endif
         rv->k = k;
