@@ -991,9 +991,21 @@ do_longlong:
                     type = TYPE_UINT64;
                 } else if (sizeof(void *) == sizeof(int)) {
                     type = TYPE_UINTN;
+#if defined(__CHERI_PURE_CAPABILITY__)
+                } else {
+                    if (sizeof(ptraddr_t) == sizeof(PRInt64)) {
+                        type = TYPE_UINT64;
+		    } else if (sizeof(ptraddr_t) == sizeof(PRInt32)) {
+                        type = TYPE_UINT32;
+		    } else {
+                        PR_ASSERT(0);
+			break;
+		    }
+#else
                 } else {
                     PR_ASSERT(0);
                     break;
+#endif
                 }
                 radix = 16;
                 goto fetch_and_convert;
